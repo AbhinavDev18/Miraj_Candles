@@ -55,6 +55,18 @@ const userSchema = new Schema({
     verifyOTPExpiry: {
         type: Date,
     },
+    purchased: [
+        {
+            product: {
+                type: Schema.Types.ObjectId,
+                ref: "Product"
+            },
+            quantity: {
+                type: Number,
+                default: 1
+            }
+        }
+    ]
 },
 { timestamps: true });
 

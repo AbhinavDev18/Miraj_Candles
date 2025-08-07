@@ -11,6 +11,9 @@ import { insertProduct } from './admin/insertProduct.js';
 import { orderList } from './admin/orders.js';
 import { comments } from './routes/comments.js';
 import { logData } from './routes/isLoggedin.js';
+import { getComments } from './routes/listComments.js';
+import { purchase } from './routes/purchase.js';
+import { verifyPayment } from './routes/verifyPayment.js';
 import multer from 'multer';
 
 const storage = multer.memoryStorage();
@@ -30,5 +33,8 @@ router.route("/insertProduct").post(upload.single('file'), insertProduct);
 router.route("/orders").get(orderList);
 router.route("/comments").post(comments);
 router.route("/isLoggedin").get(logData);
+router.route("/listComments").post(getComments);
+router.route("/purchase").post(purchase);
+router.route("/verifyPayment").post(verifyPayment);
 
 export default router;
