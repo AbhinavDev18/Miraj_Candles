@@ -8,23 +8,10 @@ import { forgotPassword } from './routes/forgotPassword.js';
 import { addToCart } from './routes/addCart.js';
 import { removeFromCart } from './routes/removeCart.js';
 import { insertProduct } from './admin/insertProduct.js';
-import { uploadFile } from './admin/insertImage.js';
 import { orderList } from './admin/orders.js';
 import { comments } from './routes/comments.js';
 import { logData } from './routes/isLoggedin.js';
 import multer from 'multer';
-
-// const storage = multer.diskStorage({
-//     destination: (req, file, cb) => {
-//         cb(null, 'uploads/');
-//     },
-//     filename: (req, file, cb) => {
-//         const uniqueName = Date.now() + path.extname(file.originalname);
-//         cb(null, uniqueName);
-//     }
-// });
-
-// const upload = multer({ storage });
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -39,8 +26,7 @@ router.route("/resetpassword").post(resetPassword);
 router.route("/forgotpassword").post(forgotPassword);
 router.route("/addtocart").post(addToCart);
 router.route("/removefromcart").post(removeFromCart);
-router.route("/insertProduct").post(insertProduct);
-router.route("/uploadFile").post(upload.single('file'), uploadFile);
+router.route("/insertProduct").post(upload.single('file'), insertProduct);
 router.route("/orders").get(orderList);
 router.route("/comments").post(comments);
 router.route("/isLoggedin").get(logData);
