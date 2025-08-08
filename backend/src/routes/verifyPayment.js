@@ -31,10 +31,11 @@ const verifyPayment = async (req, res) => {
         });
         const order = new Order({
             user: userId,
-            products: { product: productId, quantity },
+            products: [{ product: productId, quantity }],
+            transactionType: 'online',
+            transactionId: razorpay_payment_id,
             paymentStatus: 'paid',
-            paymentId: razorpay_payment_id,
-            paymentMode: 'razorpay'
+            address: shippingAddress
         });
         await order.save();
         await User.findByIdAndUpdate(userId, {
