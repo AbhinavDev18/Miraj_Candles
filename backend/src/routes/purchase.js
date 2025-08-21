@@ -1,6 +1,8 @@
 import { instance as razorpay } from '../utils/razorpay.js';
 import { Product } from '../models/product.js';
 import { v4 as uuidv4 } from 'uuid';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const purchase = async (req, res) => {
     try {
@@ -12,18 +14,26 @@ const purchase = async (req, res) => {
         if (product.quantity < num) {
             return res.status(400).json({ error: 'Insufficient stock' });
         }
-        const amount = product.price * num * 100;
+        const amount = Math.round(product.price * num * 100);
+
+        if (amount < 100) {
+            return res.status(400).json({ error: "Amount must be at least ₹1" });
+        }
+
         const options = {
             amount,
             currency: "INR",
-            receipt: `receipt_order_${uuidv4()}`,
+            receipt: `order_${uuidv4().substring(0, 15)}`,
             notes: {
                 productId,
                 userId,
                 quantity: num
             }
         };
+        console.log(options);
         const razorpayOrder = await razorpay.orders.create(options);
+        console.log(req.body);
+        console.log(razorpayOrder);
         return res.status(200).json({
             success: true,
             orderId: razorpayOrder.id,
@@ -33,7 +43,10 @@ const purchase = async (req, res) => {
         });
     }
     catch (error) {
-        return res.status(500).json({ error: error.message });
+        console.error("Purchase Error:", error);
+        return res.status(500).json({
+            error: error.error?.description || error.message || "Something went wrong"
+        });
     }
 };
 

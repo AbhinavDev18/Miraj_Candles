@@ -39,7 +39,7 @@ export const sendEmail = async ({email, emailType, userId}) => {
         return mailResponse;
     }
     catch(error) {
-        throw new error(error.message);
+        throw new Error(error.message);
     }
 }
 
@@ -54,7 +54,7 @@ export const resendVerificationEmail = async (email) => {
         });
     }
     catch(error) {
-        throw new error(error.message);
+        throw new Error(error.message);
     }
 }
 

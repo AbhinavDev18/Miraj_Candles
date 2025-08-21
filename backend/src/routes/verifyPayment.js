@@ -12,7 +12,8 @@ const verifyPayment = async (req, res) => {
             razorpay_signature,
             userId,
             productId,
-            quantity
+            quantity,
+            address
         } = req.body;
         const body = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSignature = crypto
@@ -20,6 +21,7 @@ const verifyPayment = async (req, res) => {
             .update(body.toString())
             .digest("hex");
         if (expectedSignature !== razorpay_signature) {
+            console.log(expectedSignature, razorpay_signature);
             return res.status(400).json({ error: "Invalid signature" });
         }
         const product = await Product.findById(productId);
@@ -35,18 +37,19 @@ const verifyPayment = async (req, res) => {
             transactionType: 'online',
             transactionId: razorpay_payment_id,
             paymentStatus: 'paid',
-            address: shippingAddress
+            address
         });
         await order.save();
-        await User.findByIdAndUpdate(userId, {
+        const user = await User.findByIdAndUpdate(userId, {
             $push: {
                 purchased: { product: productId, quantity }
             }
         });
         await sendEmail({
             userId,
-            emailType: 'ORDER',
-            orderId: order._id
+            emailType: 'VERIFY',
+            // orderId: order._id,
+            email: user.email
         });
         return res.json({ success: true, message: 'Payment verified and order placed' });
     }
