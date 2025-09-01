@@ -33,6 +33,10 @@ const orderSchema = new Schema({
         type: String,
         default: null,
     },
+    phone: {
+        type: String,
+        required: true
+    },
     address: {
         type: String,
         required: true

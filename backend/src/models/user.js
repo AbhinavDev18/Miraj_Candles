@@ -20,6 +20,22 @@ const userSchema = new Schema({
         type: String,
         required: [true, "password is required"]
     },
+    phone: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+    },
+    address: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user"
+    },
     cart: [
         {
             product: {

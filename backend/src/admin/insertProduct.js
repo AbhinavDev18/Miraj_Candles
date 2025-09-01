@@ -18,15 +18,20 @@ export const insertProduct = async (req, res) => {
             return res.status(500).json({ error: 'Failed to upload image to Cloudinary' });
         }
 
-        const { name, description, price, status, quantity, sold } = req.body;
+        const { name, title, description, price, originalPrice, category, features, discount, status, stock, sold } = req.body;
 
         const product = new Product({
             name,
             description,
             price,
-            image: uploadedImage.url, // Store Cloudinary URL
+            image: uploadedImage.url,
             status,
-            quantity,
+            title,
+            originalPrice,
+            discount,
+            category,
+            features,
+            quantity: stock,
             sold,
         });
 
