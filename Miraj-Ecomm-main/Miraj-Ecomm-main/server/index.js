@@ -12,6 +12,7 @@ import { toDataURL } from 'qrcode';
 import { sendEmail } from './lib/mail.js';
 import multer from 'multer';
 import uploadToCloudinary, { deleteFromCloudinary } from './lib/uploadCloudinary.js';
+import Order from './models/Order.js';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -364,6 +365,130 @@ app.get('/api/check-subscription', verifyToken, async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 })
+
+app.get('/api/contact', verifyAdmin, async (req, res) => {
+  try {
+    const { default: Contact } = await import('./models/Contact.js');
+    const contacts = await Contact.find();
+    res.status(200).json(contacts);
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/contact', verifyToken, upload.array('files', 5), async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, subject, message, orderId } = req.body;
+    if(!subject || !message || !orderId) return res.status(400).json({ message: 'Enter all details' });
+    const { default: User } = await import('./models/User.js');
+    const { default: Contact } = await import('./models/Contact.js');
+    const user = await User.findById(req.user._id)
+    if(!user) return res.status(404).json({ message: 'Login first' });
+    const urls = await Promise.all(
+      req.files.map(async (f) => {
+        const buffer = f.buffer;
+        return await uploadToCloudinary(buffer, 'contact');
+      })
+    );
+    // "ORD-" + order._id.toString().slice(-6).toUpperCase()
+    const { default: Order } = await import('./models/Order.js');
+    let ord;
+    const order = await Order.find();
+    for(let i = 0; i < order.length; i++) {
+      if("ORD-" + order[i]._id.toString().slice(-6).toUpperCase() === orderId && order[i].userId.toString() === req.user._id.toString()){
+        ord = order[i]._id;
+        break;
+      }
+    }
+    if(!ord) return res.status(400).json({ message: 'Order not found' });
+    const contact = new Contact({
+      userId: req.user._id,
+      firstName: firstName || user.name,
+      lastName: lastName || user.name,
+      email: email || user.email,
+      phone: phone || user.phone,
+      subject,
+      message,
+      orderId: ord
+    });
+    contact.images = urls.filter(Boolean);
+    contact.save();
+    sendEmail({ email: user.email, emailType: 'QUERY', userId: req.user._id, message });
+    const admin = await User.find({ role: "admin" });
+    admin.forEach(async (a) => {
+      await sendEmail({
+        email: a.email,
+        emailType: "NEW QUERY",
+        userId: req.user._id,
+        message
+      });
+    });
+    res.status(200).json({ message: 'Your query reached us. We will respond you soon.' });
+  }
+  catch(error) {
+    res.status(500).json({ message: error.message });
+  }
+})
+
+app.post('/api/contact/read', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.body;
+    const { default: Contact } = await import('./models/Contact.js');
+    const contact = await Contact.findById(id);
+    if(!contact) return res.status(404).json({ message: 'Contact not found' });
+
+    contact.read = true;
+    contact.save();
+    res.status(200).json({ message: 'Contact marked as read' });
+  }
+  catch(error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/contact/response', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.body;
+    const { default: Contact } = await import('./models/Contact.js');
+    const contact = await Contact.findById(id);
+    if(!contact) return res.status(404).json({ message: 'Contact not found' });
+    if(!contact.read) return res.status(400).json({ message: 'Contact not marked as read' });
+    contact.response = true;
+    contact.save();
+    res.status(200).json({ message: 'Contact marked as responded' });
+  }
+  catch(error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/contact/delete', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.body;
+    const { default: Contact } = await import('./models/Contact.js');
+    const contact = await Contact.findById(id);
+    if(!contact) return res.status(404).json({ message: 'Contact not found' });
+    if(!contact.read || !contact.response) return res.status(400).json({ message: 'Contact not marked as read' });
+    const imageIds = contact.images.map((url) => {
+      const parts = url.split('/');
+      const uploadIndex = parts.indexOf('upload');
+      const folderAndFile = parts.slice(uploadIndex + 1).join('/');
+      const publicIdWithExtension = folderAndFile.split('/').slice(1).join('/');
+      const publicId = publicIdWithExtension.substring(0, publicIdWithExtension.lastIndexOf('.'));
+      return publicId;
+    });
+
+    for (const id of imageIds) {
+      await deleteFromCloudinary(id);
+    }
+    await Contact.findByIdAndDelete(id);
+    res.status(200).json({ message: 'Contact deleted successfully' });
+  }
+  catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 app.get('/api/products/search', async (req, res) => {
   try {

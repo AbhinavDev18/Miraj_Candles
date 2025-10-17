@@ -7,7 +7,7 @@ function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-export const sendEmail = async ({email, emailType, userId, orderId, orderTotal, product }) => {
+export const sendEmail = async ({email, emailType, userId, orderId, orderTotal, product, message }) => {
     try {
         const transporter = nodemailer.createTransport({
             service: 'Gmail',
@@ -75,18 +75,18 @@ export const sendEmail = async ({email, emailType, userId, orderId, orderTotal, 
 				</tr>
 			`).join('');
 
-      let tot = 0;
-      order.items.forEach(item => tot += item.price * item.quantity);
-      const tax = order.totalAmount - tot;
+      		let tot = 0;
+      		order.items.forEach(item => tot += item.price * item.quantity);
+      		const tax = order.totalAmount - tot;
 
-      orderItemsHTML += `
-        <tr style="border-bottom: 1px solid #eee;">
-          <td style="padding: 10px;">Tax</td>
-          <td style="text-align: center; padding: 10px;">-</td>
-          <td style="text-align: center; padding: 10px;">18%</td>
-          <td style="text-align: right; padding: 10px;">₹${tax}</td>
-        </tr>
-      `;
+      		orderItemsHTML += `
+				<tr style="border-bottom: 1px solid #eee;">
+				<td style="padding: 10px;">Tax</td>
+				<td style="text-align: center; padding: 10px;">-</td>
+				<td style="text-align: center; padding: 10px;">18%</td>
+				<td style="text-align: right; padding: 10px;">₹${tax}</td>
+				</tr>
+			`;
 
 			mailOptions = {
 				from: process.env.GMAIL_USERNAME,
@@ -112,40 +112,78 @@ export const sendEmail = async ({email, emailType, userId, orderId, orderTotal, 
 		}
 		else if(emailType === 'NEW ORDER') {
       		const user = await User.findById(userId);
-			const order = await Order.findById(orderId).populate('items.productId');
-			const formatDate = (dateString) => {
-				const date = new Date(dateString);
-				return date.toLocaleString("en-GB", {
-					day: "2-digit",
-					month: "short",
-					year: "numeric",
-					hour: "2-digit",
-					minute: "2-digit",
-					hour12: false
-				});
-			}
-			const itemsHtml = order.items.map(item => `
+          	const order = await Order.findById(orderId).populate('items.productId');
+          	const formatDate = (dateString) => {
+            	const date = new Date(dateString);
+            	return date.toLocaleString("en-GB", {
+              		day: "2-digit",
+              		month: "short",
+              		year: "numeric",
+              		hour: "2-digit",
+              		minute: "2-digit",
+              		hour12: false
+            	});
+          	}
+          	const itemsHtml = order.items.map(item => `
 				<tr>
-					<td>${item.productId.name}</td>
-					<td align="center">${item.quantity}</td>
-					<td align="right">₹${item.price}</td>
+				<td>${item.productId.name}</td>
+				<td align="center">${item.quantity}</td>
+				<td align="right">₹${item.price}</td>
 				</tr>
 			`).join('');
 
-			mailOptions = {
-				from: process.env.GMAIL_USERNAME,
-				to: email,
-				subject: 'New Order Received - Miraj Candles',
-				html: NEW_ORDER_NOTIFICATION_EMAIL_TEMPLATE
+          	mailOptions = {
+            	from: process.env.GMAIL_USERNAME,
+            	to: email,
+            	subject: 'New Order Received - Miraj Candles',
+            	html: NEW_ORDER_NOTIFICATION_EMAIL_TEMPLATE
 				.replace('{orderId}', `ORD-${orderId.toString().slice(-6).toUpperCase()}`)
 				.replace('{customerName}', user.name)
 				.replace('{customerEmail}', user.email)
 				.replace('{orderTotal}', order.totalAmount.toFixed(2))
 				.replace('{paymentMethod}', order.paymentMethod)
-        .replace('{paymentTnx', order.transactionId)
+				.replace('{paymentTnx', order.transactionId)
 				.replace('{orderDate}', formatDate(order.date.toString()))
 				.replace('{orderItems}', itemsHtml)
+          	}
+        }
+        else if(emailType === 'QUERY') {
+          	const user = await User.findById(userId);
+          	mailOptions = {
+				from: process.env.GMAIL_USERNAME,
+				to: email,
+				subject: 'Your Query Has Been Received - Miraj Candles',
+				html: CUSTOMER_QUERY_RECEIVED_EMAIL_TEMPLATE
+				.replace('{customerName}', user.name)
+				.replace('{customerMessage}', message)
 			}
+        }
+		else if(emailType === 'NEW QUERY') {
+			const formatDate = (dateString) => {
+				const date = new Date(dateString);
+				return date.toLocaleString('en-GB', {
+					day: '2-digit',
+					month: 'short',
+					year: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit',
+					hour12: false
+				});
+			};
+
+			const user = await User.findById(userId);
+
+			mailOptions = {
+				from: process.env.GMAIL_USERNAME,
+				to: email,
+				subject: '📩 New Customer Query Received - Miraj Candles',
+				html: ADMIN_QUERY_NOTIFICATION_EMAIL_TEMPLATE
+				.replace('{customerName}', user.name)
+				.replace('{customerEmail}', user.email)
+				.replace('{customerPhone}', user.phone || 'N/A')
+				.replace('{submittedDate}', formatDate(new Date()))
+				.replace('{customerMessage}', message)
+			};
 		}
         const mailResponse = await transporter.sendMail(mailOptions);
         return mailResponse;
@@ -688,6 +726,155 @@ const NEW_ORDER_NOTIFICATION_EMAIL_TEMPLATE = `
 
               <p style="font-size: 14px; margin-top: 40px; color: #444;">
                 Best regards,<br/>
+                <strong>Miraj Candles System 🕯️</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="background-color: #fff4e6; padding: 20px; font-size: 12px; color: #888;">
+              <p style="margin: 0;">© 2025 Miraj Candles. All rights reserved.</p>
+              <p style="margin: 5px 0 0;">This is an automated email for administrative purposes.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+const CUSTOMER_QUERY_RECEIVED_EMAIL_TEMPLATE = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Query Has Been Received - Miraj Candles</title>
+</head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #fff7f3; color: #333;">
+  <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background: linear-gradient(135deg, #ff7b00, #ff4500); padding: 30px;">
+              <img src="https://mirajcandles.com/logo.png" alt="Miraj Candles" width="80" style="display: block; margin-bottom: 10px;" />
+              <h1 style="color: #ffffff; font-size: 24px; margin: 0;">We've Received Your Query</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 30px 40px;">
+              <p style="font-size: 16px; margin-bottom: 15px;">Hi {customerName},</p>
+
+              <p style="font-size: 16px; margin-bottom: 20px;">
+                Thank you for reaching out to <strong>Miraj Candles</strong> 🕯️.
+                We’ve successfully received your message and our support team is reviewing it.
+              </p>
+
+              <div style="background-color: #fff4e6; padding: 20px 30px; border-left: 4px solid #ff7b00; border-radius: 6px; margin: 25px 0;">
+                <p style="font-size: 15px; margin: 0;">
+                  <strong>Your Message:</strong>
+                </p>
+                <p style="font-size: 15px; color: #555; margin-top: 8px;">"{customerMessage}"</p>
+              </div>
+
+              <p style="font-size: 15px; margin-bottom: 15px;">
+                One of our team members will get back to you as soon as possible — usually within <strong>24 hours</strong>.
+              </p>
+
+              <p style="font-size: 15px; color: #ff7b00; font-weight: 500;">
+                We appreciate your patience and look forward to assisting you soon!
+              </p>
+
+              <p style="font-size: 14px; margin-top: 40px; color: #444;">
+                Warm regards,<br/>
+                <strong>The Miraj Candles Support Team 🕯️</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="background-color: #fff4e6; padding: 20px; font-size: 12px; color: #888;">
+              <p style="margin: 0;">© 2025 Miraj Candles. All rights reserved.</p>
+              <p style="margin: 5px 0 0;">This is an automated email — please do not reply directly.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+const ADMIN_QUERY_NOTIFICATION_EMAIL_TEMPLATE = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Customer Query - Miraj Candles</title>
+</head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #fff7f3; color: #333;">
+  <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background: linear-gradient(135deg, #ff7b00, #ff4500); padding: 30px;">
+              <img src="https://mirajcandles.com/logo.png" alt="Miraj Candles" width="80" style="display: block; margin-bottom: 10px;" />
+              <h1 style="color: #ffffff; font-size: 24px; margin: 0;">New Customer Query Received</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 30px 40px;">
+              <p style="font-size: 16px; margin-bottom: 15px;">Hello Admin,</p>
+
+              <p style="font-size: 16px; margin-bottom: 20px;">
+                A new customer has just reached out via the <strong>Contact Us</strong> form on the Miraj Candles website. Below are the details:
+              </p>
+
+              <!-- Query Details Box -->
+              <div style="background-color: #fff4e6; padding: 20px 30px; border-left: 4px solid #ff7b00; border-radius: 6px; margin-bottom: 30px;">
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Customer Name:</strong> {customerName}</p>
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Email:</strong> {customerEmail}</p>
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Phone:</strong> {customerPhone}</p>
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Submitted On:</strong> {submittedDate}</p>
+              </div>
+
+              <!-- Message Section -->
+              <div style="background-color: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 20px 25px; margin-bottom: 30px;">
+                <p style="font-size: 15px; margin: 0 0 10px 0;"><strong>Message:</strong></p>
+                <p style="font-size: 15px; color: #555; margin: 0;">"{customerMessage}"</p>
+              </div>
+
+              <p style="font-size: 15px; margin-bottom: 20px;">
+                Please review and respond to the customer promptly. You can reply directly to their email or manage this query via the admin dashboard.
+              </p>
+
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://mirajcandles.com/admin/queries"
+                   style="background-color: #ff7b00; color: white; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
+                   📋 View All Queries
+                </a>
+              </div>
+
+              <p style="font-size: 14px; margin-top: 40px; color: #444;">
+                Regards,<br/>
                 <strong>Miraj Candles System 🕯️</strong>
               </p>
             </td>

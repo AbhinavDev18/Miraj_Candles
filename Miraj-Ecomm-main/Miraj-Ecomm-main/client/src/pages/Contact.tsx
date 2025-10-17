@@ -1,22 +1,76 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { PhoneIcon, EnvelopeIcon, MapPinIcon, ClockIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Contact: React.FC = () => {
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: '',
+    orderId: '',
+    files: [] as File[]
+  });
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const totalImages = uploadedImages.length + files.length;
-
-    if (totalImages > 5) {
-      alert('You can upload maximum 5 images');
+  const handleFileChange = (e: any) => {
+    const selectedFiles: File[] = Array.from(e.target.files);
+    const totalFiles = uploadedImages.length + selectedFiles.length;
+    if (totalFiles > 5) {
+      alert('You can upload up to 5 images only.');
       return;
     }
-
-    setUploadedImages(prev => [...prev, ...files]);
+    setUploadedImages(prev => [...prev, ...selectedFiles]);
   };
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('firstName', form.firstName);
+    formData.append('lastName', form.lastName);
+    formData.append('email', form.email);
+    formData.append('phone', form.phone);
+    formData.append('subject', form.subject);
+    formData.append('message', form.message);
+    formData.append('orderId', form.orderId);
+    uploadedImages.forEach((file) => {
+      formData.append('files', file);
+    });
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/contact`, formData, { withCredentials: true });
+      toast.success(res.data.message);
+      setForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        subject: '',
+        message: '',
+        orderId: '',
+        files: [] as File[]
+      });
+      setUploadedImages([]);
+    }
+    catch (err) {
+      toast.error(err.response.data.message);
+    }
+  }
+
+  // const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = Array.from(event.target.files || []);
+  //   const totalImages = uploadedImages.length + files.length;
+
+  //   if (totalImages > 5) {
+  //     alert('You can upload maximum 5 images');
+  //     return;
+  //   }
+
+  //   setUploadedImages(prev => [...prev, ...files]);
+  // };
 
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
@@ -130,7 +184,7 @@ const Contact: React.FC = () => {
                   </svg>
                 </a>
                 <a
-                  href="https://wa.me/919876543210"   
+                  href="https://wa.me/919876543210"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition-colors duration-200"
@@ -168,7 +222,7 @@ const Contact: React.FC = () => {
           >
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
 
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -178,6 +232,8 @@ const Contact: React.FC = () => {
                     type="text"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     placeholder="Your first name"
+                    value={form.firstName}
+                    onChange={e => setForm({ ...form, firstName: e.target.value })}
                   />
                 </div>
                 <div>
@@ -188,6 +244,8 @@ const Contact: React.FC = () => {
                     type="text"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     placeholder="Your last name"
+                    value={form.lastName}
+                    onChange={e => setForm({ ...form, lastName: e.target.value })}
                   />
                 </div>
               </div>
@@ -200,6 +258,8 @@ const Contact: React.FC = () => {
                   type="email"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   placeholder="your@email.com"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
                 />
               </div>
 
@@ -211,6 +271,8 @@ const Contact: React.FC = () => {
                   type="tel"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   placeholder="+91 98765 43210"
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
                 />
               </div>
 
@@ -222,6 +284,8 @@ const Contact: React.FC = () => {
                   type="text"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   placeholder="mention your reason (return/ damaged/ any other) like this..."
+                  value={form.subject}
+                  onChange={e => setForm({ ...form, subject: e.target.value })}
                 />
               </div>
 
@@ -233,7 +297,22 @@ const Contact: React.FC = () => {
                   rows={5}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                   placeholder="Tell us more about your inquiry..."
+                  value={form.message}
+                  onChange={e => setForm({ ...form, message: e.target.value })}
                 ></textarea>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order Id
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Enter your order id"
+                  value={form.orderId}
+                  onChange={e => setForm({ ...form, orderId: e.target.value })}
+                />
               </div>
 
               <div>
@@ -254,7 +333,7 @@ const Contact: React.FC = () => {
                         type="file"
                         multiple
                         accept="image/png,image/jpg,image/jpeg"
-                        onChange={handleImageUpload}
+                        onChange={handleFileChange}
                         className="hidden"
                         disabled={uploadedImages.length >= 5}
                       />
